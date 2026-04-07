@@ -16,7 +16,7 @@ Paperless-ngx is a powerful self-hosted document management system, but its defa
 ---
 
 ## Architecture
-
+![Architecture diagram](docs/architecture-paperless-portal.svg)
 ```
 Browser
    │
