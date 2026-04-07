@@ -1,0 +1,87 @@
+# Docker Compose (Paperless-ngx demo)
+# - Services: Redis broker, Postgres DB, Gotenberg, Tika, Paperless web UI
+# - Host web UI port: 8081 -> container 8000
+# - Volumes: persistent data for Postgres and Redis
+
+services:
+
+  # Redis broker used by Paperless for task queueing and caching
+  broker:
+    image: redis:7
+    container_name: paperless-redis
+    restart: unless-stopped
+    volumes:
+      - redisdata:/data
+
+  # Postgres database for Paperless data storage
+  db:
+    image: postgres:15
+    container_name: paperless-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: paperless
+      POSTGRES_USER: paperless
+      POSTGRES_PASSWORD: paperless
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  # Gotenberg: converts documents (used for previews and conversions)
+  gotenberg:
+    image: gotenberg/gotenberg:7
+    container_name: paperless-gotenberg
+    restart: unless-stopped
+    command:
+      - "gotenberg"
+      - "--chromium-disable-routes=true"
+
+  # Apache Tika: text extraction service used by Paperless for OCR and content
+  tika:
+    image: apache/tika:latest
+    container_name: paperless-tika
+    restart: unless-stopped
+
+  # Paperless-ngx web UI service
+  # - Exposes container port 8000 on host port 8081
+  # - Environment variables are provided via `.env` and the `environment` section
+  # - Mounts local folders for import, data, media and export
+  webserver:
+    image: ghcr.io/paperless-ngx/paperless-ngx:latest
+    container_name: paperless
+    restart: unless-stopped
+    depends_on:
+      - db
+      - broker
+      - gotenberg
+      - tika
+    ports:
+      - "8081:8000" # Mine LAB
+    env_file:
+      - .env
+    environment:
+      # Redis connection string for Celery and caching
+      PAPERLESS_REDIS: redis://broker:6379
+      # Database host (Postgres service name)
+      PAPERLESS_DBHOST: db
+      # Enable Tika-based document parsing and OCR integration
+      PAPERLESS_TIKA_ENABLED: 1
+      # Tika service endpoint used for text extraction
+      PAPERLESS_TIKA_ENDPOINT: http://tika:9998
+      # Gotenberg endpoint used for document conversions when Tika needs it
+      PAPERLESS_TIKA_GOTENBERG_ENDPOINT: http://gotenberg:3000
+      # Default OCR language (English + Portuguese)
+      PAPERLESS_OCR_LANGUAGE: eng+por
+      # Install Portuguese tesseract pack at startup (eng is pre-installed)
+      PAPERLESS_OCR_LANGUAGES: por
+      # Post-consume script to run after each document is processed
+      #PAPERLESS_POST_CONSUME_SCRIPT: /scripts/paperless_receitas.py
+      PAPERLESS_POST_CONSUME_SCRIPT: /scripts/paperless_extractor.py
+    volumes:
+      - ./consume:/usr/src/paperless/consume
+      - ./data:/usr/src/paperless/data
+      - ./media:/usr/src/paperless/media
+      - ./export:/usr/src/paperless/export
+      - /opt/paperless/scripts:/scripts
+
+volumes:
+  pgdata:
+  redisdata:
