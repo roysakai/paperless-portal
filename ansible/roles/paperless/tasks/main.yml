@@ -1,0 +1,35 @@
+- name: Create directory for Paperless
+  file:
+    path: /opt/paperless
+    state: directory
+    mode: '0755'
+
+- name: Copy docker-compose.yml
+  copy:
+    src: ../../../docker-compose.yml
+    dest: /opt/paperless/docker-compose.yml
+
+- name: Copy .env file from template
+  template:
+    src: env.j2
+    dest: /opt/paperless/.env
+  vars:
+    - domain: "{{ lookup('env', 'DOMAIN') | default('localhost') }}"
+
+- name: Create data directories
+  file:
+    path: "/opt/paperless/{{ item }}"
+    state: directory
+    owner: 1000
+    group: 1000
+  loop:
+    - data
+    - media
+    - redis
+    - db
+
+- name: Start Paperless stack
+  docker_compose:
+    project_src: /opt/paperless
+    state: present
+    restarted: yes

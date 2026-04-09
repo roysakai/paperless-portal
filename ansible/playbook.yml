@@ -1,0 +1,6 @@
+- hosts: paperless
+  become: yes
+  roles:
+    - docker
+    - paperless
+    - reverse_proxy

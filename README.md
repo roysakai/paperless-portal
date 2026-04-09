@@ -157,3 +157,24 @@ Built as a personal homelab project to explore Docker Compose orchestration, RES
 ## License
 
 MIT
+
+## 🚀 One‑command deployment on AWS Free Tier
+
+This template provisions an EC2 `t2.micro` instance (Free Tier eligible) and deploys the Paperless portal with Docker, reverse proxy, and optional SSL.
+
+### Prerequisites
+- [Terraform](https://developer.hashicorp.com/terraform/downloads) (>= 1.0)
+- [Ansible](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html) (>= 2.9)
+- [AWS CLI](https://aws.amazon.com/cli/) configured with credentials (or use environment variables)
+- An SSH key pair (`~/.ssh/id_rsa.pub` by default)
+
+### Deployment Steps
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/roysakai/paperless-portal.git
+   cd paperless-portal/terraform
+
+2. Make proper adjustments
+   cp terraform.tfvars.example terraform.tfvars
+   # edit terraform.tfvars with your actual AMI ID and region

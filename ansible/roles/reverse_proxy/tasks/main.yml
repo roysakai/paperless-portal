@@ -1,0 +1,39 @@
+- name: Install Apache and certbot
+  apt:
+    name:
+      - apache2
+      - certbot
+      - python3-certbot-apache
+    update_cache: yes
+
+- name: Enable Apache modules
+  apache2_module:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - proxy
+    - proxy_http
+    - ssl
+    - rewrite
+
+- name: Copy virtual host configuration
+  template:
+    src: paperless.conf.j2
+    dest: /etc/apache2/sites-available/paperless.conf
+
+- name: Disable default site and enable Paperless site
+  command:
+    cmd: "a2dissite 000-default.conf && a2ensite paperless.conf"
+  notify: restart apache
+
+- name: Obtain Let's Encrypt certificate (if domain is set)
+  command:
+    cmd: "certbot --apache -d {{ domain }} --non-interactive --agree-tos --email admin@{{ domain }}"
+  when: domain is defined and domain != "localhost"
+  ignore_errors: yes
+
+- name: Set up systemd service for auto-restart (optional – Docker already restarts)
+  copy:
+    src: docker-cleanup.service
+    dest: /etc/systemd/system/docker-cleanup.service
+  when: false  # not needed unless you want extra cleanup
