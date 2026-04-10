@@ -5,6 +5,7 @@
       - ca-certificates
       - curl
       - software-properties-common
+      - python3-pip   # Ensure pip is available
     update_cache: yes
 
 - name: Add Docker GPG key
@@ -25,6 +26,11 @@
       - containerd.io
       - docker-compose-plugin
     update_cache: yes
+
+- name: Install Docker SDK for Python (Ansible dependency)
+  pip:
+    name: docker
+    state: present
 
 - name: Start and enable Docker
   systemd:

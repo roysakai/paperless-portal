@@ -13,4 +13,15 @@ variable "ami_id" {
 variable "ssh_public_key_path" {
   description = "Path to your SSH public key (e.g., ~/.ssh/id_rsa.pub)"
   default     = "~/.ssh/id_rsa.pub"
+
+  validation {
+    condition     = can(regex(".*\\.pub$", var.ssh_public_key_path))
+    error_message = "Must end with .pub extension."
+  }
+}
+
+variable "instance_type" {
+  description = "EC2 instance type (must be free tier eligible)"
+  type        = string
+  default     = "t3.small"
 }

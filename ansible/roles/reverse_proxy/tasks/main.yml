@@ -6,6 +6,15 @@
       - python3-certbot-apache
     update_cache: yes
 
+- name: Remove any existing broken paperless site config
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/apache2/sites-enabled/paperless.conf
+    - /etc/apache2/sites-available/paperless.conf
+  notify: restart apache
+
 - name: Enable Apache modules
   apache2_module:
     name: "{{ item }}"
@@ -16,24 +25,57 @@
     - ssl
     - rewrite
 
-- name: Copy virtual host configuration
+- name: Deploy HTTP-only virtual host (temporary)
   template:
-    src: paperless.conf.j2
+    src: paperless-http.conf.j2
     dest: /etc/apache2/sites-available/paperless.conf
-
-- name: Disable default site and enable Paperless site
-  command:
-    cmd: "a2dissite 000-default.conf && a2ensite paperless.conf"
+  vars:
+    backend_port: "{{ paperless_backend_port | default(8081) }}"
   notify: restart apache
 
-- name: Obtain Let's Encrypt certificate (if domain is set)
-  command:
-    cmd: "certbot --apache -d {{ domain }} --non-interactive --agree-tos --email admin@{{ domain }}"
-  when: domain is defined and domain != "localhost"
+- name: Disable default site and enable paperless site
+  command: a2dissite 000-default.conf
   ignore_errors: yes
+  notify: restart apache
+
+- name: Enable paperless site
+  command: a2ensite paperless.conf
+  notify: restart apache
+
+- name: Obtain Let's Encrypt certificate (this will auto-configure HTTPS)
+  command: >
+    certbot --apache -d {{ domain }}
+    --non-interactive --agree-tos
+    --email admin@{{ domain }}
+  when: domain is defined and domain != "localhost"
+  register: certbot_result
+  failed_when: false
+  changed_when: "'new certificate deployed' in certbot_result.stdout"
+  timeout: 120
+
+- name: Fix backend port in SSL virtual host if needed
+  replace:
+    path: /etc/apache2/sites-available/paperless-le-ssl.conf
+    regexp: 'localhost:8000'
+    replace: 'localhost:{{ paperless_backend_port | default(8081) }}'
+  when:
+    - domain is defined
+    - domain != "localhost"
+    - certbot_result is defined
+  notify: restart apache
+
+- name: Ensure HTTP to HTTPS redirection
+  command: certbot --apache -d {{ domain }} --redirect
+  when:
+    - domain is defined
+    - domain != "localhost"
+    - certbot_result is defined
+    - certbot_result.rc == 0
+  ignore_errors: yes
+  timeout: 60
 
 - name: Set up systemd service for auto-restart (optional – Docker already restarts)
   copy:
     src: docker-cleanup.service
     dest: /etc/systemd/system/docker-cleanup.service
-  when: false  # not needed unless you want extra cleanup
+  when: false

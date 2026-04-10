@@ -1,0 +1,6 @@
+<VirtualHost *:80>
+    ServerName {{ domain }}
+    ProxyPreserveHost On
+    ProxyPass / http://localhost:{{ backend_port }}/
+    ProxyPassReverse / http://localhost:{{ backend_port }}/
+</VirtualHost>

@@ -14,7 +14,7 @@
     src: env.j2
     dest: /opt/paperless/.env
   vars:
-    - domain: "{{ lookup('env', 'DOMAIN') | default('localhost') }}"
+    domain: "{{ lookup('env', 'DOMAIN') | default('localhost') }}"
 
 - name: Create data directories
   file:
@@ -28,8 +28,9 @@
     - redis
     - db
 
-- name: Start Paperless stack
-  docker_compose:
-    project_src: /opt/paperless
-    state: present
-    restarted: yes
+- name: Start Paperless stack using Docker Compose CLI
+  command:
+    cmd: docker compose up -d
+    chdir: /opt/paperless
+  register: compose_result
+  changed_when: "'Starting' in compose_result.stdout or 'Creating' in compose_result.stdout"
